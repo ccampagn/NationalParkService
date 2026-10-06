@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="NationalParkServiceAPI.csproj" />
+  <Project Path="NationalParkServiceAPI.Tests/NationalParkServiceAPI.Tests.csproj" />
+</Solution>
