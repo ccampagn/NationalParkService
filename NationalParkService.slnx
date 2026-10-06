@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="NationalParkReact/NationalParkServiceReact.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="NationalParkServiceAPI/NationalParkServiceAPI.csproj" />
+  <Project Path="NationalParkServiceAPI/NationalParkServiceAPI.Tests/NationalParkServiceAPI.Tests.csproj" />
+</Solution>
