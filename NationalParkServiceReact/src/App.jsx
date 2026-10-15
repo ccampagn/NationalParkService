@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Landscape from './components/Landscape.jsx'
 import ParkCard from './components/ParkCard.jsx'
 import BookingDrawer from './components/BookingDrawer.jsx'
 import TripsDrawer from './components/TripsDrawer.jsx'
-import { ACTIVITIES, REGIONS, parks } from './data/parks.js'
+import { ACTIVITIES, REGIONS, fromApi } from './data/parks.js'
 import { isoDaysFromNow } from './dates.js'
 import './App.css'
 
@@ -24,7 +24,6 @@ function App() {
     destination: '',
     checkIn: isoDaysFromNow(14),
     checkOut: isoDaysFromNow(17),
-    guests: 2,
   })
   const [query, setQuery] = useState('')
   const [region, setRegion] = useState('All')
@@ -34,7 +33,24 @@ function App() {
   const [bookingPark, setBookingPark] = useState(null)
   const [trips, setTrips] = useState([])
   const [tripsOpen, setTripsOpen] = useState(false)
+  const [parks, setParks] = useState([])
+  const [parksStatus, setParksStatus] = useState('loading')
   const resultsRef = useRef(null)
+
+  useEffect(() => {
+    fetch('/api/parks')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.statusText))))
+      .then((data) => {
+        setParks(data.map(fromApi))
+        setParksStatus('ready')
+      })
+      .catch((err) => {
+        console.error('Failed to load parks', err)
+        setParksStatus('error')
+      })
+  }, [])
+
+  const parkNames = useMemo(() => parks.map((p) => p.name), [parks])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -46,7 +62,7 @@ function App() {
           (!activity || p.activities.includes(activity)),
       )
       .sort(SORTS[sort])
-  }, [query, region, activity, sort])
+  }, [parks, query, region, activity, sort])
 
   function updateSearch(field, value) {
     setSearch((s) => ({ ...s, [field]: value }))
@@ -112,12 +128,15 @@ function App() {
         <form className="search" onSubmit={handleSearch}>
           <label className="field grow">
             <span>Where to?</span>
-            <input
-              type="text"
-              placeholder="Park or state"
+            <select
               value={search.destination}
               onChange={(e) => updateSearch('destination', e.target.value)}
-            />
+            >
+              <option value="">Any park</option>
+              {parkNames.map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span>Check in</span>
@@ -134,19 +153,6 @@ function App() {
               value={search.checkOut}
               onChange={(e) => updateSearch('checkOut', e.target.value)}
             />
-          </label>
-          <label className="field small">
-            <span>Guests</span>
-            <select
-              value={search.guests}
-              onChange={(e) => updateSearch('guests', Number(e.target.value))}
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
           </label>
           <button type="submit" className="btn btn-primary search-btn">
             Search
@@ -176,7 +182,7 @@ function App() {
       <main id="parks" ref={resultsRef} className="parks">
         <div className="parks-header">
           <div>
-            <h2>Popular parks</h2>
+            <h2>National Parks</h2>
             <p>
               {results.length} park{results.length === 1 ? '' : 's'}
               {query && <> matching “{query}”</>}
@@ -216,7 +222,15 @@ function App() {
           ))}
         </div>
 
-        {results.length > 0 ? (
+        {parksStatus === 'loading' ? (
+          <div className="no-results">
+            <p>Loading parks…</p>
+          </div>
+        ) : parksStatus === 'error' ? (
+          <div className="no-results">
+            <p>Couldn't load parks. Make sure the API is running, then refresh.</p>
+          </div>
+        ) : results.length > 0 ? (
           <div className="grid">
             {results.map((park) => (
               <ParkCard

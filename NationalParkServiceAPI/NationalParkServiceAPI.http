@@ -9,3 +9,8 @@ GET {{NationalParkServiceAPI_HostAddress}}/api/passtypes
 Accept: application/json
 
 ###
+
+GET {{NationalParkServiceAPI_HostAddress}}/api/parks
+Accept: application/json
+
+###

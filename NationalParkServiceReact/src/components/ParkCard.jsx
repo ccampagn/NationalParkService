@@ -1,4 +1,4 @@
-import Landscape from './Landscape.jsx'
+import ParkPhoto from './ParkPhoto.jsx'
 
 export default function ParkCard({ park, isFavorite, onToggleFavorite, onReserve }) {
   const lowAvailability = park.sitesLeft <= 5
@@ -6,7 +6,7 @@ export default function ParkCard({ park, isFavorite, onToggleFavorite, onReserve
   return (
     <article className="park-card">
       <div className="park-art">
-        <Landscape scene={park.scene} palette={park.palette} />
+        <ParkPhoto park={park} />
         {park.badge && <span className="badge">{park.badge}</span>}
         <button
           type="button"

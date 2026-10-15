@@ -327,6 +327,36 @@
 .park-card:hover .park-art svg {
   transform: scale(1.06);
 }
+.park-photo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+.park-card:hover .park-photo {
+  transform: scale(1.06);
+}
+.photo-credit {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.65rem;
+  line-height: 1.4;
+  text-decoration: none;
+}
+.photo-credit:hover {
+  color: #fff;
+  text-decoration: underline;
+}
 .badge {
   position: absolute;
   top: 12px;
@@ -537,6 +567,23 @@
 .drawer-art {
   position: relative;
   height: 180px;
+  overflow: hidden;
+}
+.drawer-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 60%);
+  pointer-events: none;
+}
+/* Top-left so it clears the close button (top-right) and the park name (bottom-left). */
+.drawer-art .photo-credit {
+  z-index: 1;
+  top: 8px;
+  left: 8px;
+  right: auto;
+  bottom: auto;
+  max-width: calc(100% - 72px);
 }
 .drawer-art svg {
   width: 100%;
@@ -545,6 +592,7 @@
 }
 .drawer-art-text {
   position: absolute;
+  z-index: 1;
   left: 24px;
   bottom: 16px;
   color: #fff;
@@ -813,9 +861,6 @@
   }
   .search .field:not(.grow) {
     flex-basis: 40%;
-  }
-  .search .field.small {
-    flex-basis: 100%;
   }
   .footer {
     flex-direction: column;

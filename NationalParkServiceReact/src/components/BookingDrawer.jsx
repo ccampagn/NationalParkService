@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Drawer from './Drawer.jsx'
-import Landscape from './Landscape.jsx'
+import ParkPhoto from './ParkPhoto.jsx'
 import { RESERVATION_FEE, siteOptionsFor } from '../data/parks.js'
 import { formatDate, nightsBetween } from '../dates.js'
 
@@ -13,7 +13,7 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm }) {
   const [siteId, setSiteId] = useState(sites[0].id)
   const [checkIn, setCheckIn] = useState(initial.checkIn)
   const [checkOut, setCheckOut] = useState(initial.checkOut)
-  const [guests, setGuests] = useState(initial.guests)
+  const [guests, setGuests] = useState(2)
   const [confirmed, setConfirmed] = useState(null)
 
   const site = sites.find((s) => s.id === siteId)
@@ -45,7 +45,7 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm }) {
   return (
     <Drawer title={`Reserve at ${park.name}`} onClose={onClose}>
       <div className="drawer-art">
-        <Landscape scene={park.scene} palette={park.palette} />
+        <ParkPhoto park={park} />
         <div className="drawer-art-text">
           <span>{park.state}</span>
           <h2>{park.name}</h2>
