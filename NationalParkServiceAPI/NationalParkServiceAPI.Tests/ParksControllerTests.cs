@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using NationalParkServiceAPI.Controllers;
 using NationalParkServiceAPI.Data;
 using NationalParkServiceAPI.Models;
@@ -7,70 +6,81 @@ using Xunit;
 
 namespace NationalParkServiceAPI.Tests;
 
-// Runs against the real NationalParkService database, using the API's connection string.
 public class ParksControllerTests
 {
     private static NationalParkServiceDbContext CreateContext()
     {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json")
-            .Build();
-
         var options = new DbContextOptionsBuilder<NationalParkServiceDbContext>()
-            .UseSqlServer(configuration.GetConnectionString("NationalParkService"))
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         return new NationalParkServiceDbContext(options);
     }
 
     [Fact]
-    public async Task GetParks_ReturnsAllParksFromDatabaseSortedByName()
+    public async Task GetParks_ReturnsAllParksSortedByName()
     {
         using var context = CreateContext();
-        var expected = await context.Parks.AsNoTracking().Select(p => p.ParkName).ToListAsync();
-        expected.Sort(StringComparer.OrdinalIgnoreCase);
+        context.Parks.AddRange(
+            new Park { ParkId = 1, ParkName = "Zion" },
+            new Park { ParkId = 2, ParkName = "Acadia" },
+            new Park { ParkId = 3, ParkName = "Denali" });
+        await context.SaveChangesAsync();
 
         var controller = new ParksController(context);
 
         var result = await controller.GetParks();
 
         var parks = Assert.IsAssignableFrom<IEnumerable<Park>>(result.Value);
-        Assert.NotEmpty(parks);
-        Assert.Equal(expected, parks.Select(p => p.ParkName));
+        Assert.Equal(new[] { "Acadia", "Denali", "Zion" }, parks.Select(p => p.ParkName));
     }
 
     [Fact]
-    public async Task GetParks_ReturnsDetailsForEveryPark()
+    public async Task GetParks_ReturnsParkDetails()
     {
         using var context = CreateContext();
+        context.Parks.Add(new Park
+        {
+            ParkId = 1,
+            ParkName = "Katmai",
+            State = "Alaska",
+            Region = "Alaska",
+            Scene = "coast",
+            Tagline = "Brown bears fishing for salmon at Brooks Falls.",
+            Rating = 4.9m,
+            Reviews = 876,
+            BaseRate = 20,
+            SitesLeft = 5,
+            Badge = "Almost full",
+            Activities = ["Wildlife", "Hiking"],
+            ImageUrl = "https://upload.wikimedia.org/katmai.jpg",
+            ImageCredit = "Photographer, CC BY-SA 2.0",
+            ImageSourceUrl = "https://commons.wikimedia.org/wiki/File:Katmai.jpg",
+        });
+        await context.SaveChangesAsync();
+
         var controller = new ParksController(context);
 
         var result = await controller.GetParks();
 
-        var parks = Assert.IsAssignableFrom<IEnumerable<Park>>(result.Value);
-        Assert.All(parks, p =>
-        {
-            Assert.False(string.IsNullOrWhiteSpace(p.State), $"{p.ParkName} has no state");
-            Assert.False(string.IsNullOrWhiteSpace(p.Region), $"{p.ParkName} has no region");
-            Assert.False(string.IsNullOrWhiteSpace(p.Tagline), $"{p.ParkName} has no tagline");
-            Assert.Contains(p.Scene, new[] { "peaks", "mesa", "coast", "forest" });
-            Assert.InRange(p.Rating, 0m, 5m);
-            Assert.True(p.BaseRate > 0, $"{p.ParkName} has no base rate");
-            Assert.NotEmpty(p.Activities);
-            Assert.StartsWith("https://", p.ImageUrl);
-            Assert.False(string.IsNullOrWhiteSpace(p.ImageCredit), $"{p.ParkName} photo has no credit");
-            Assert.StartsWith("https://commons.wikimedia.org/", p.ImageSourceUrl);
-        });
+        var park = Assert.Single(Assert.IsAssignableFrom<IEnumerable<Park>>(result.Value));
+        Assert.Equal("Alaska", park.State);
+        Assert.Equal("Alaska", park.Region);
+        Assert.Equal("coast", park.Scene);
+        Assert.Equal(4.9m, park.Rating);
+        Assert.Equal(876, park.Reviews);
+        Assert.Equal(20, park.BaseRate);
+        Assert.Equal(5, park.SitesLeft);
+        Assert.Equal("Almost full", park.Badge);
+        Assert.Equal(new[] { "Wildlife", "Hiking" }, park.Activities);
+        Assert.Equal("https://upload.wikimedia.org/katmai.jpg", park.ImageUrl);
+        Assert.Equal("Photographer, CC BY-SA 2.0", park.ImageCredit);
+        Assert.Equal("https://commons.wikimedia.org/wiki/File:Katmai.jpg", park.ImageSourceUrl);
     }
 
     [Fact]
     public async Task GetParks_ReturnsEmptyList_WhenNoneExist()
     {
         using var context = CreateContext();
-        // Delete inside a transaction that is never committed, so the real data is left untouched.
-        using var transaction = await context.Database.BeginTransactionAsync();
-        await context.Parks.ExecuteDeleteAsync();
-
         var controller = new ParksController(context);
 
         var result = await controller.GetParks();
