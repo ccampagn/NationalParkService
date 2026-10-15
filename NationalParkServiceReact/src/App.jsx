@@ -7,6 +7,9 @@ import { ACTIVITIES, REGIONS, fromApi } from './data/parks.js'
 import { isoDaysFromNow } from './dates.js'
 import './App.css'
 
+// Empty in development (Vite proxies /api to the local API); set VITE_API_URL in .env.production for the deployed API.
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+
 const HERO_PALETTE = {
   sky: ['#1b2a4a', '#f08a5d'],
   sun: '#ffd9a0',
@@ -38,7 +41,7 @@ function App() {
   const resultsRef = useRef(null)
 
   useEffect(() => {
-    fetch('/api/parks')
+    fetch(`${API_URL}/api/parks`)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.statusText))))
       .then((data) => {
         setParks(data.map(fromApi))

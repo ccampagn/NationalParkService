@@ -6,6 +6,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+// Sites allowed to call the API from the browser (e.g. the deployed React site). Set in appsettings or Azure app settings.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+    options.AddDefaultPolicy(policy => policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 builder.Services.AddDbContext<NationalParkServiceDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("NationalParkService")));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -20,6 +24,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 app.UseAuthorization();
 
