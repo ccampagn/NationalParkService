@@ -24,8 +24,6 @@ IF COL_LENGTH('dbo.Park', 'Reviews') IS NULL
     ALTER TABLE dbo.Park ADD Reviews INT NOT NULL CONSTRAINT DF_Park_Reviews DEFAULT 0;
 IF COL_LENGTH('dbo.Park', 'BaseRate') IS NULL
     ALTER TABLE dbo.Park ADD BaseRate INT NOT NULL CONSTRAINT DF_Park_BaseRate DEFAULT 0;
-IF COL_LENGTH('dbo.Park', 'SitesLeft') IS NULL
-    ALTER TABLE dbo.Park ADD SitesLeft INT NOT NULL CONSTRAINT DF_Park_SitesLeft DEFAULT 0;
 IF COL_LENGTH('dbo.Park', 'Badge') IS NULL
     ALTER TABLE dbo.Park ADD Badge NVARCHAR(50) NULL;
 -- JSON array of activity names, e.g. ["Hiking","Camping"].
@@ -33,73 +31,82 @@ IF COL_LENGTH('dbo.Park', 'Activities') IS NULL
     ALTER TABLE dbo.Park ADD Activities NVARCHAR(MAX) NOT NULL CONSTRAINT DF_Park_Activities DEFAULT '[]';
 GO
 
+-- SitesLeft was a made-up count; the API now counts free sites from reservations. Drop it if an earlier run added it.
+IF COL_LENGTH('dbo.Park', 'SitesLeft') IS NOT NULL
+BEGIN
+    IF OBJECT_ID('dbo.DF_Park_SitesLeft', 'D') IS NOT NULL
+        ALTER TABLE dbo.Park DROP CONSTRAINT DF_Park_SitesLeft;
+    ALTER TABLE dbo.Park DROP COLUMN SitesLeft;
+END
+GO
+
 -- All 63 U.S. national parks. Inserts missing parks and refreshes details on existing ones, so this is safe to re-run.
 MERGE dbo.Park AS target
 USING (VALUES
-    ('Acadia', 'Maine', 'East', 'coast', 'First sunrise in the U.S. from Cadillac Mountain.', 4.8, 6987, 30, 11, NULL, '["Kayaking","Hiking","Camping"]'),
-    ('American Samoa', 'American Samoa', 'Islands', 'coast', 'Coral reefs and rainforest on the edge of the South Pacific.', 4.6, 412, 20, 14, NULL, '["Hiking","Kayaking","Wildlife"]'),
-    ('Arches', 'Utah', 'Southwest', 'mesa', 'Over 2,000 natural stone arches under dark-sky nights.', 4.7, 6120, 25, 3, 'Almost full', '["Stargazing","Hiking","Climbing"]'),
-    ('Badlands', 'South Dakota', 'Midwest', 'mesa', 'Striped buttes, fossil beds and roaming bison.', 4.7, 5210, 22, 19, NULL, '["Hiking","Wildlife","Stargazing","Camping"]'),
-    ('Big Bend', 'Texas', 'Southwest', 'mesa', 'Desert, river canyons and some of the darkest skies in the country.', 4.8, 4876, 26, 13, NULL, '["Hiking","Stargazing","Kayaking","Camping"]'),
-    ('Biscayne', 'Florida', 'East', 'coast', 'A mostly underwater park of reefs, keys and shipwrecks.', 4.5, 2034, 25, 8, NULL, '["Kayaking","Wildlife","Camping"]'),
-    ('Black Canyon of the Gunnison', 'Colorado', 'Rockies', 'peaks', 'Sheer dark walls dropping 2,700 feet to the river.', 4.8, 2950, 24, 10, NULL, '["Climbing","Hiking","Stargazing","Camping"]'),
-    ('Bryce Canyon', 'Utah', 'Southwest', 'mesa', 'Amphitheaters of orange hoodoos glowing at sunrise.', 4.9, 8432, 30, 5, 'Almost full', '["Hiking","Stargazing","Camping","Lodging"]'),
-    ('Canyonlands', 'Utah', 'Southwest', 'mesa', 'Mesas and canyons carved by the Colorado and Green rivers.', 4.8, 4321, 25, 17, NULL, '["Hiking","Kayaking","Stargazing","Camping"]'),
-    ('Capitol Reef', 'Utah', 'Southwest', 'mesa', 'Waterpocket Fold cliffs and pie from the historic Fruita orchards.', 4.8, 3987, 25, 12, NULL, '["Hiking","Climbing","Stargazing","Camping"]'),
-    ('Carlsbad Caverns', 'New Mexico', 'Southwest', 'mesa', 'A vast limestone cave and nightly bat flights at dusk.', 4.7, 5643, 20, 16, NULL, '["Hiking","Wildlife","Stargazing"]'),
-    ('Channel Islands', 'California', 'West', 'coast', 'Five wild islands with sea caves, island foxes and kelp forests.', 4.7, 2210, 15, 6, NULL, '["Kayaking","Hiking","Wildlife","Camping"]'),
-    ('Congaree', 'South Carolina', 'East', 'forest', 'Champion trees in the largest old-growth bottomland forest in the Southeast.', 4.5, 1876, 20, 22, NULL, '["Kayaking","Hiking","Camping"]'),
-    ('Crater Lake', 'Oregon', 'Pacific NW', 'peaks', 'The deepest lake in the U.S., brilliant blue inside a collapsed volcano.', 4.9, 6011, 26, 9, NULL, '["Hiking","Camping","Lodging"]'),
-    ('Cuyahoga Valley', 'Ohio', 'Midwest', 'forest', 'Waterfalls, towpath trails and a scenic railroad.', 4.6, 3402, 20, 24, NULL, '["Hiking","Wildlife","Lodging"]'),
-    ('Death Valley', 'California', 'West', 'mesa', 'Salt flats, sand dunes and the lowest point in North America.', 4.7, 7120, 22, 28, NULL, '["Hiking","Stargazing","Camping","Lodging"]'),
-    ('Denali', 'Alaska', 'Alaska', 'peaks', 'North America''s tallest peak above six million acres of wild land.', 4.9, 5532, 30, 8, NULL, '["Wildlife","Hiking","Camping"]'),
-    ('Dry Tortugas', 'Florida', 'East', 'coast', 'Fort Jefferson and turquoise water 70 miles past Key West.', 4.8, 2687, 15, 4, 'Almost full', '["Kayaking","Wildlife","Camping"]'),
-    ('Everglades', 'Florida', 'East', 'coast', 'Sawgrass prairies, mangroves, alligators and manatees.', 4.5, 6234, 25, 20, NULL, '["Kayaking","Wildlife","Camping"]'),
-    ('Gates of the Arctic', 'Alaska', 'Alaska', 'peaks', 'No roads or trails, just the Brooks Range above the Arctic Circle.', 4.8, 198, 15, 25, NULL, '["Hiking","Wildlife","Camping"]'),
-    ('Gateway Arch', 'Missouri', 'Midwest', 'forest', 'The 630-foot Gateway to the West on the Mississippi River.', 4.6, 6543, 20, 12, NULL, '["Hiking","Lodging"]'),
-    ('Glacier', 'Montana', 'Rockies', 'peaks', 'Going-to-the-Sun Road and turquoise alpine lakes.', 4.9, 7655, 30, 9, 'New sites', '["Hiking","Kayaking","Wildlife","Camping"]'),
-    ('Glacier Bay', 'Alaska', 'Alaska', 'coast', 'Tidewater glaciers calving into fjords full of whales.', 4.8, 1543, 20, 15, NULL, '["Kayaking","Wildlife","Camping","Lodging"]'),
-    ('Grand Canyon', 'Arizona', 'Southwest', 'mesa', 'A mile deep and 277 miles of layered red rock.', 4.8, 15210, 30, 4, 'Almost full', '["Hiking","Camping","Stargazing","Lodging"]'),
-    ('Grand Teton', 'Wyoming', 'Rockies', 'peaks', 'Jagged peaks rising straight out of Jackson Hole.', 4.9, 9120, 34, 6, NULL, '["Hiking","Climbing","Kayaking","Wildlife","Camping"]'),
-    ('Great Basin', 'Nevada', 'West', 'peaks', 'Ancient bristlecone pines, Lehman Caves and dark night skies.', 4.7, 1654, 20, 18, NULL, '["Hiking","Stargazing","Camping"]'),
-    ('Great Sand Dunes', 'Colorado', 'Rockies', 'mesa', 'The tallest dunes in North America below snowy peaks.', 4.7, 4012, 22, 14, NULL, '["Hiking","Stargazing","Camping"]'),
-    ('Great Smoky Mountains', 'Tennessee', 'East', 'forest', 'Misty ridges, old-growth forest and fireflies in June.', 4.7, 11320, 30, 26, NULL, '["Hiking","Wildlife","Camping","Lodging"]'),
-    ('Guadalupe Mountains', 'Texas', 'Southwest', 'mesa', 'The highest point in Texas atop an ancient fossil reef.', 4.7, 1987, 20, 19, NULL, '["Hiking","Stargazing","Camping"]'),
-    ('Haleakala', 'Hawaii', 'Islands', 'peaks', 'Sunrise above the clouds from a 10,000-foot volcanic summit.', 4.8, 5876, 20, 7, NULL, '["Hiking","Stargazing","Camping"]'),
-    ('Hawaii Volcanoes', 'Hawaii', 'Islands', 'peaks', 'Kilauea and Mauna Loa, two of the world''s most active volcanoes.', 4.8, 6543, 25, 10, NULL, '["Hiking","Stargazing","Camping","Lodging"]'),
-    ('Hot Springs', 'Arkansas', 'East', 'forest', 'Historic Bathhouse Row and thermal springs in the Ouachitas.', 4.6, 3654, 20, 21, NULL, '["Hiking","Camping","Lodging"]'),
-    ('Indiana Dunes', 'Indiana', 'Midwest', 'coast', 'Fifteen miles of Lake Michigan beaches and towering dunes.', 4.6, 4123, 25, 23, NULL, '["Hiking","Kayaking","Camping"]'),
-    ('Isle Royale', 'Michigan', 'Midwest', 'forest', 'A remote Lake Superior island of wolves and moose.', 4.8, 987, 15, 12, NULL, '["Hiking","Kayaking","Wildlife","Camping","Lodging"]'),
-    ('Joshua Tree', 'California', 'West', 'mesa', 'Twisted Joshua trees, granite boulders and desert stars.', 4.8, 9345, 25, 3, 'Almost full', '["Climbing","Hiking","Stargazing","Camping"]'),
-    ('Katmai', 'Alaska', 'Alaska', 'coast', 'Brown bears fishing for salmon at Brooks Falls.', 4.9, 876, 20, 5, NULL, '["Wildlife","Hiking","Camping","Lodging"]'),
-    ('Kenai Fjords', 'Alaska', 'Alaska', 'coast', 'Harding Icefield glaciers flowing down to the sea.', 4.8, 2109, 20, 13, NULL, '["Kayaking","Hiking","Wildlife"]'),
-    ('Kings Canyon', 'California', 'West', 'peaks', 'A canyon deeper than the Grand Canyon and giant sequoia groves.', 4.8, 3456, 32, 15, NULL, '["Hiking","Camping","Lodging"]'),
-    ('Kobuk Valley', 'Alaska', 'Alaska', 'mesa', 'Arctic sand dunes crossed by a half-million migrating caribou.', 4.6, 124, 15, 25, NULL, '["Wildlife","Hiking","Camping"]'),
-    ('Lake Clark', 'Alaska', 'Alaska', 'peaks', 'Volcanoes, turquoise lakes and bears on the coastal meadows.', 4.8, 342, 20, 20, NULL, '["Wildlife","Kayaking","Hiking","Camping"]'),
-    ('Lassen Volcanic', 'California', 'West', 'peaks', 'Boiling mud pots, steaming vents and a volcano you can climb.', 4.8, 3210, 24, 17, NULL, '["Hiking","Kayaking","Stargazing","Camping"]'),
-    ('Mammoth Cave', 'Kentucky', 'East', 'forest', 'The longest known cave system in the world.', 4.7, 5987, 25, 16, NULL, '["Hiking","Kayaking","Camping","Lodging"]'),
-    ('Mesa Verde', 'Colorado', 'Southwest', 'mesa', 'Ancestral Puebloan cliff dwellings tucked into canyon walls.', 4.8, 4567, 30, 18, NULL, '["Hiking","Camping","Lodging"]'),
-    ('Mount Rainier', 'Washington', 'Pacific NW', 'peaks', 'A glacier-clad volcano ringed by wildflower meadows.', 4.9, 8765, 28, 6, NULL, '["Hiking","Climbing","Camping","Lodging"]'),
-    ('New River Gorge', 'West Virginia', 'East', 'forest', 'Whitewater, sandstone crags and a famous arch bridge.', 4.7, 3109, 20, 22, 'New sites', '["Kayaking","Climbing","Hiking","Camping"]'),
-    ('North Cascades', 'Washington', 'Pacific NW', 'peaks', 'Over 300 glaciers and the turquoise waters of Diablo Lake.', 4.8, 2345, 22, 14, NULL, '["Hiking","Kayaking","Climbing","Camping"]'),
-    ('Olympic', 'Washington', 'Pacific NW', 'coast', 'Rainforest, rugged coastline and glacier-capped peaks.', 4.7, 5432, 24, 18, NULL, '["Hiking","Kayaking","Camping","Wildlife"]'),
-    ('Petrified Forest', 'Arizona', 'Southwest', 'mesa', 'Rainbow-colored fossil logs and the Painted Desert.', 4.6, 4210, 20, 20, NULL, '["Hiking","Stargazing"]'),
-    ('Pinnacles', 'California', 'West', 'mesa', 'Volcanic spires, talus caves and soaring California condors.', 4.6, 2765, 24, 13, NULL, '["Climbing","Hiking","Wildlife","Camping"]'),
-    ('Redwood', 'California', 'West', 'forest', 'The tallest trees on Earth along a foggy Pacific coast.', 4.8, 5432, 35, 9, NULL, '["Hiking","Kayaking","Wildlife","Camping"]'),
-    ('Rocky Mountain', 'Colorado', 'Rockies', 'peaks', 'Elk meadows and trails above 12,000 feet.', 4.8, 8890, 30, 15, NULL, '["Hiking","Wildlife","Camping","Stargazing"]'),
-    ('Saguaro', 'Arizona', 'Southwest', 'mesa', 'Forests of giant saguaro cacti on both sides of Tucson.', 4.7, 3876, 15, 15, NULL, '["Hiking","Stargazing","Wildlife"]'),
-    ('Sequoia', 'California', 'West', 'forest', 'The General Sherman Tree and the granite climb up Moro Rock.', 4.9, 7654, 32, 8, NULL, '["Hiking","Climbing","Camping","Lodging"]'),
-    ('Shenandoah', 'Virginia', 'East', 'forest', 'Skyline Drive and Blue Ridge views over 500 miles of trails.', 4.8, 7012, 30, 14, NULL, '["Hiking","Wildlife","Camping","Lodging"]'),
-    ('Theodore Roosevelt', 'North Dakota', 'Midwest', 'mesa', 'Painted badlands, wild horses and prairie dog towns.', 4.7, 2345, 14, 21, NULL, '["Wildlife","Hiking","Kayaking","Camping"]'),
-    ('Virgin Islands', 'U.S. Virgin Islands', 'Islands', 'coast', 'White-sand beaches and snorkel trails on St. John.', 4.7, 2876, 30, 6, NULL, '["Kayaking","Hiking","Camping"]'),
-    ('Voyageurs', 'Minnesota', 'Midwest', 'coast', 'Connected lakes, houseboats and the northern lights.', 4.6, 1234, 20, 18, NULL, '["Kayaking","Stargazing","Wildlife","Camping"]'),
-    ('White Sands', 'New Mexico', 'Southwest', 'mesa', 'Glistening white gypsum dunes made for sledding.', 4.8, 5234, 15, 11, NULL, '["Hiking","Stargazing","Camping"]'),
-    ('Wind Cave', 'South Dakota', 'Midwest', 'forest', 'Boxwork cave formations below a bison-dotted prairie.', 4.6, 2109, 18, 24, NULL, '["Hiking","Wildlife","Camping"]'),
-    ('Wrangell-St. Elias', 'Alaska', 'Alaska', 'peaks', 'The largest national park, bigger than Switzerland.', 4.8, 543, 15, 25, NULL, '["Hiking","Climbing","Wildlife","Camping"]'),
-    ('Yellowstone', 'Wyoming', 'Rockies', 'forest', 'Geysers, bison herds and the first national park on Earth.', 4.8, 14002, 33, 21, NULL, '["Wildlife","Hiking","Camping","Lodging"]'),
-    ('Yosemite', 'California', 'West', 'peaks', 'Granite cliffs, giant sequoias and thundering waterfalls.', 4.9, 12840, 36, 12, 'Most popular', '["Hiking","Camping","Climbing","Lodging"]'),
-    ('Zion', 'Utah', 'Southwest', 'mesa', 'Slot canyons, emerald pools and the Angels Landing climb.', 4.9, 9874, 35, 7, NULL, '["Hiking","Climbing","Camping"]')
-) AS source (ParkName, State, Region, Scene, Tagline, Rating, Reviews, BaseRate, SitesLeft, Badge, Activities)
+    ('Acadia', 'Maine', 'East', 'coast', 'First sunrise in the U.S. from Cadillac Mountain.', 4.8, 6987, 30, NULL, '["Kayaking","Hiking","Camping"]'),
+    ('American Samoa', 'American Samoa', 'Islands', 'coast', 'Coral reefs and rainforest on the edge of the South Pacific.', 4.6, 412, 20, NULL, '["Hiking","Kayaking","Wildlife"]'),
+    ('Arches', 'Utah', 'Southwest', 'mesa', 'Over 2,000 natural stone arches under dark-sky nights.', 4.7, 6120, 25, NULL, '["Stargazing","Hiking","Climbing"]'),
+    ('Badlands', 'South Dakota', 'Midwest', 'mesa', 'Striped buttes, fossil beds and roaming bison.', 4.7, 5210, 22, NULL, '["Hiking","Wildlife","Stargazing","Camping"]'),
+    ('Big Bend', 'Texas', 'Southwest', 'mesa', 'Desert, river canyons and some of the darkest skies in the country.', 4.8, 4876, 26, NULL, '["Hiking","Stargazing","Kayaking","Camping"]'),
+    ('Biscayne', 'Florida', 'East', 'coast', 'A mostly underwater park of reefs, keys and shipwrecks.', 4.5, 2034, 25, NULL, '["Kayaking","Wildlife","Camping"]'),
+    ('Black Canyon of the Gunnison', 'Colorado', 'Rockies', 'peaks', 'Sheer dark walls dropping 2,700 feet to the river.', 4.8, 2950, 24, NULL, '["Climbing","Hiking","Stargazing","Camping"]'),
+    ('Bryce Canyon', 'Utah', 'Southwest', 'mesa', 'Amphitheaters of orange hoodoos glowing at sunrise.', 4.9, 8432, 30, NULL, '["Hiking","Stargazing","Camping","Lodging"]'),
+    ('Canyonlands', 'Utah', 'Southwest', 'mesa', 'Mesas and canyons carved by the Colorado and Green rivers.', 4.8, 4321, 25, NULL, '["Hiking","Kayaking","Stargazing","Camping"]'),
+    ('Capitol Reef', 'Utah', 'Southwest', 'mesa', 'Waterpocket Fold cliffs and pie from the historic Fruita orchards.', 4.8, 3987, 25, NULL, '["Hiking","Climbing","Stargazing","Camping"]'),
+    ('Carlsbad Caverns', 'New Mexico', 'Southwest', 'mesa', 'A vast limestone cave and nightly bat flights at dusk.', 4.7, 5643, 20, NULL, '["Hiking","Wildlife","Stargazing"]'),
+    ('Channel Islands', 'California', 'West', 'coast', 'Five wild islands with sea caves, island foxes and kelp forests.', 4.7, 2210, 15, NULL, '["Kayaking","Hiking","Wildlife","Camping"]'),
+    ('Congaree', 'South Carolina', 'East', 'forest', 'Champion trees in the largest old-growth bottomland forest in the Southeast.', 4.5, 1876, 20, NULL, '["Kayaking","Hiking","Camping"]'),
+    ('Crater Lake', 'Oregon', 'Pacific NW', 'peaks', 'The deepest lake in the U.S., brilliant blue inside a collapsed volcano.', 4.9, 6011, 26, NULL, '["Hiking","Camping","Lodging"]'),
+    ('Cuyahoga Valley', 'Ohio', 'Midwest', 'forest', 'Waterfalls, towpath trails and a scenic railroad.', 4.6, 3402, 20, NULL, '["Hiking","Wildlife","Lodging"]'),
+    ('Death Valley', 'California', 'West', 'mesa', 'Salt flats, sand dunes and the lowest point in North America.', 4.7, 7120, 22, NULL, '["Hiking","Stargazing","Camping","Lodging"]'),
+    ('Denali', 'Alaska', 'Alaska', 'peaks', 'North America''s tallest peak above six million acres of wild land.', 4.9, 5532, 30, NULL, '["Wildlife","Hiking","Camping"]'),
+    ('Dry Tortugas', 'Florida', 'East', 'coast', 'Fort Jefferson and turquoise water 70 miles past Key West.', 4.8, 2687, 15, NULL, '["Kayaking","Wildlife","Camping"]'),
+    ('Everglades', 'Florida', 'East', 'coast', 'Sawgrass prairies, mangroves, alligators and manatees.', 4.5, 6234, 25, NULL, '["Kayaking","Wildlife","Camping"]'),
+    ('Gates of the Arctic', 'Alaska', 'Alaska', 'peaks', 'No roads or trails, just the Brooks Range above the Arctic Circle.', 4.8, 198, 15, NULL, '["Hiking","Wildlife","Camping"]'),
+    ('Gateway Arch', 'Missouri', 'Midwest', 'forest', 'The 630-foot Gateway to the West on the Mississippi River.', 4.6, 6543, 20, NULL, '["Hiking","Lodging"]'),
+    ('Glacier', 'Montana', 'Rockies', 'peaks', 'Going-to-the-Sun Road and turquoise alpine lakes.', 4.9, 7655, 30, 'New sites', '["Hiking","Kayaking","Wildlife","Camping"]'),
+    ('Glacier Bay', 'Alaska', 'Alaska', 'coast', 'Tidewater glaciers calving into fjords full of whales.', 4.8, 1543, 20, NULL, '["Kayaking","Wildlife","Camping","Lodging"]'),
+    ('Grand Canyon', 'Arizona', 'Southwest', 'mesa', 'A mile deep and 277 miles of layered red rock.', 4.8, 15210, 30, NULL, '["Hiking","Camping","Stargazing","Lodging"]'),
+    ('Grand Teton', 'Wyoming', 'Rockies', 'peaks', 'Jagged peaks rising straight out of Jackson Hole.', 4.9, 9120, 34, NULL, '["Hiking","Climbing","Kayaking","Wildlife","Camping"]'),
+    ('Great Basin', 'Nevada', 'West', 'peaks', 'Ancient bristlecone pines, Lehman Caves and dark night skies.', 4.7, 1654, 20, NULL, '["Hiking","Stargazing","Camping"]'),
+    ('Great Sand Dunes', 'Colorado', 'Rockies', 'mesa', 'The tallest dunes in North America below snowy peaks.', 4.7, 4012, 22, NULL, '["Hiking","Stargazing","Camping"]'),
+    ('Great Smoky Mountains', 'Tennessee', 'East', 'forest', 'Misty ridges, old-growth forest and fireflies in June.', 4.7, 11320, 30, NULL, '["Hiking","Wildlife","Camping","Lodging"]'),
+    ('Guadalupe Mountains', 'Texas', 'Southwest', 'mesa', 'The highest point in Texas atop an ancient fossil reef.', 4.7, 1987, 20, NULL, '["Hiking","Stargazing","Camping"]'),
+    ('Haleakala', 'Hawaii', 'Islands', 'peaks', 'Sunrise above the clouds from a 10,000-foot volcanic summit.', 4.8, 5876, 20, NULL, '["Hiking","Stargazing","Camping"]'),
+    ('Hawaii Volcanoes', 'Hawaii', 'Islands', 'peaks', 'Kilauea and Mauna Loa, two of the world''s most active volcanoes.', 4.8, 6543, 25, NULL, '["Hiking","Stargazing","Camping","Lodging"]'),
+    ('Hot Springs', 'Arkansas', 'East', 'forest', 'Historic Bathhouse Row and thermal springs in the Ouachitas.', 4.6, 3654, 20, NULL, '["Hiking","Camping","Lodging"]'),
+    ('Indiana Dunes', 'Indiana', 'Midwest', 'coast', 'Fifteen miles of Lake Michigan beaches and towering dunes.', 4.6, 4123, 25, NULL, '["Hiking","Kayaking","Camping"]'),
+    ('Isle Royale', 'Michigan', 'Midwest', 'forest', 'A remote Lake Superior island of wolves and moose.', 4.8, 987, 15, NULL, '["Hiking","Kayaking","Wildlife","Camping","Lodging"]'),
+    ('Joshua Tree', 'California', 'West', 'mesa', 'Twisted Joshua trees, granite boulders and desert stars.', 4.8, 9345, 25, NULL, '["Climbing","Hiking","Stargazing","Camping"]'),
+    ('Katmai', 'Alaska', 'Alaska', 'coast', 'Brown bears fishing for salmon at Brooks Falls.', 4.9, 876, 20, NULL, '["Wildlife","Hiking","Camping","Lodging"]'),
+    ('Kenai Fjords', 'Alaska', 'Alaska', 'coast', 'Harding Icefield glaciers flowing down to the sea.', 4.8, 2109, 20, NULL, '["Kayaking","Hiking","Wildlife"]'),
+    ('Kings Canyon', 'California', 'West', 'peaks', 'A canyon deeper than the Grand Canyon and giant sequoia groves.', 4.8, 3456, 32, NULL, '["Hiking","Camping","Lodging"]'),
+    ('Kobuk Valley', 'Alaska', 'Alaska', 'mesa', 'Arctic sand dunes crossed by a half-million migrating caribou.', 4.6, 124, 15, NULL, '["Wildlife","Hiking","Camping"]'),
+    ('Lake Clark', 'Alaska', 'Alaska', 'peaks', 'Volcanoes, turquoise lakes and bears on the coastal meadows.', 4.8, 342, 20, NULL, '["Wildlife","Kayaking","Hiking","Camping"]'),
+    ('Lassen Volcanic', 'California', 'West', 'peaks', 'Boiling mud pots, steaming vents and a volcano you can climb.', 4.8, 3210, 24, NULL, '["Hiking","Kayaking","Stargazing","Camping"]'),
+    ('Mammoth Cave', 'Kentucky', 'East', 'forest', 'The longest known cave system in the world.', 4.7, 5987, 25, NULL, '["Hiking","Kayaking","Camping","Lodging"]'),
+    ('Mesa Verde', 'Colorado', 'Southwest', 'mesa', 'Ancestral Puebloan cliff dwellings tucked into canyon walls.', 4.8, 4567, 30, NULL, '["Hiking","Camping","Lodging"]'),
+    ('Mount Rainier', 'Washington', 'Pacific NW', 'peaks', 'A glacier-clad volcano ringed by wildflower meadows.', 4.9, 8765, 28, NULL, '["Hiking","Climbing","Camping","Lodging"]'),
+    ('New River Gorge', 'West Virginia', 'East', 'forest', 'Whitewater, sandstone crags and a famous arch bridge.', 4.7, 3109, 20, 'New sites', '["Kayaking","Climbing","Hiking","Camping"]'),
+    ('North Cascades', 'Washington', 'Pacific NW', 'peaks', 'Over 300 glaciers and the turquoise waters of Diablo Lake.', 4.8, 2345, 22, NULL, '["Hiking","Kayaking","Climbing","Camping"]'),
+    ('Olympic', 'Washington', 'Pacific NW', 'coast', 'Rainforest, rugged coastline and glacier-capped peaks.', 4.7, 5432, 24, NULL, '["Hiking","Kayaking","Camping","Wildlife"]'),
+    ('Petrified Forest', 'Arizona', 'Southwest', 'mesa', 'Rainbow-colored fossil logs and the Painted Desert.', 4.6, 4210, 20, NULL, '["Hiking","Stargazing"]'),
+    ('Pinnacles', 'California', 'West', 'mesa', 'Volcanic spires, talus caves and soaring California condors.', 4.6, 2765, 24, NULL, '["Climbing","Hiking","Wildlife","Camping"]'),
+    ('Redwood', 'California', 'West', 'forest', 'The tallest trees on Earth along a foggy Pacific coast.', 4.8, 5432, 35, NULL, '["Hiking","Kayaking","Wildlife","Camping"]'),
+    ('Rocky Mountain', 'Colorado', 'Rockies', 'peaks', 'Elk meadows and trails above 12,000 feet.', 4.8, 8890, 30, NULL, '["Hiking","Wildlife","Camping","Stargazing"]'),
+    ('Saguaro', 'Arizona', 'Southwest', 'mesa', 'Forests of giant saguaro cacti on both sides of Tucson.', 4.7, 3876, 15, NULL, '["Hiking","Stargazing","Wildlife"]'),
+    ('Sequoia', 'California', 'West', 'forest', 'The General Sherman Tree and the granite climb up Moro Rock.', 4.9, 7654, 32, NULL, '["Hiking","Climbing","Camping","Lodging"]'),
+    ('Shenandoah', 'Virginia', 'East', 'forest', 'Skyline Drive and Blue Ridge views over 500 miles of trails.', 4.8, 7012, 30, NULL, '["Hiking","Wildlife","Camping","Lodging"]'),
+    ('Theodore Roosevelt', 'North Dakota', 'Midwest', 'mesa', 'Painted badlands, wild horses and prairie dog towns.', 4.7, 2345, 14, NULL, '["Wildlife","Hiking","Kayaking","Camping"]'),
+    ('Virgin Islands', 'U.S. Virgin Islands', 'Islands', 'coast', 'White-sand beaches and snorkel trails on St. John.', 4.7, 2876, 30, NULL, '["Kayaking","Hiking","Camping"]'),
+    ('Voyageurs', 'Minnesota', 'Midwest', 'coast', 'Connected lakes, houseboats and the northern lights.', 4.6, 1234, 20, NULL, '["Kayaking","Stargazing","Wildlife","Camping"]'),
+    ('White Sands', 'New Mexico', 'Southwest', 'mesa', 'Glistening white gypsum dunes made for sledding.', 4.8, 5234, 15, NULL, '["Hiking","Stargazing","Camping"]'),
+    ('Wind Cave', 'South Dakota', 'Midwest', 'forest', 'Boxwork cave formations below a bison-dotted prairie.', 4.6, 2109, 18, NULL, '["Hiking","Wildlife","Camping"]'),
+    ('Wrangell-St. Elias', 'Alaska', 'Alaska', 'peaks', 'The largest national park, bigger than Switzerland.', 4.8, 543, 15, NULL, '["Hiking","Climbing","Wildlife","Camping"]'),
+    ('Yellowstone', 'Wyoming', 'Rockies', 'forest', 'Geysers, bison herds and the first national park on Earth.', 4.8, 14002, 33, NULL, '["Wildlife","Hiking","Camping","Lodging"]'),
+    ('Yosemite', 'California', 'West', 'peaks', 'Granite cliffs, giant sequoias and thundering waterfalls.', 4.9, 12840, 36, 'Most popular', '["Hiking","Camping","Climbing","Lodging"]'),
+    ('Zion', 'Utah', 'Southwest', 'mesa', 'Slot canyons, emerald pools and the Angels Landing climb.', 4.9, 9874, 35, NULL, '["Hiking","Climbing","Camping"]')
+) AS source (ParkName, State, Region, Scene, Tagline, Rating, Reviews, BaseRate, Badge, Activities)
 ON target.ParkName = source.ParkName
 WHEN MATCHED THEN UPDATE SET
     State = source.State,
@@ -109,13 +116,12 @@ WHEN MATCHED THEN UPDATE SET
     Rating = source.Rating,
     Reviews = source.Reviews,
     BaseRate = source.BaseRate,
-    SitesLeft = source.SitesLeft,
     Badge = source.Badge,
     Activities = source.Activities
 WHEN NOT MATCHED THEN
-    INSERT (ParkName, State, Region, Scene, Tagline, Rating, Reviews, BaseRate, SitesLeft, Badge, Activities)
+    INSERT (ParkName, State, Region, Scene, Tagline, Rating, Reviews, BaseRate, Badge, Activities)
     VALUES (source.ParkName, source.State, source.Region, source.Scene, source.Tagline, source.Rating,
-            source.Reviews, source.BaseRate, source.SitesLeft, source.Badge, source.Activities);
+            source.Reviews, source.BaseRate, source.Badge, source.Activities);
 
 GO
 

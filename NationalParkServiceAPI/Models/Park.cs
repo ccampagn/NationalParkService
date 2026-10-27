@@ -11,10 +11,10 @@ public class Park
     public decimal Rating { get; set; }
     public int Reviews { get; set; }
     public int BaseRate { get; set; }
-    public int SitesLeft { get; set; }
     public string? Badge { get; set; }
     public List<string> Activities { get; set; } = [];
     public string? ImageUrl { get; set; }
     public string? ImageCredit { get; set; }
     public string? ImageSourceUrl { get; set; }
+    public List<Campground> Campgrounds { get; set; } = [];
 }

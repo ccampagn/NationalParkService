@@ -59,7 +59,6 @@ export function fromApi(p) {
     rating: p.rating,
     reviews: p.reviews,
     baseRate: p.baseRate,
-    sitesLeft: p.sitesLeft,
     badge: p.badge,
     scene: p.scene,
     palette: palettes[p.parkId % palettes.length],
@@ -67,38 +66,13 @@ export function fromApi(p) {
     imageUrl: p.imageUrl,
     imageCredit: p.imageCredit,
     imageSourceUrl: p.imageSourceUrl,
+    campgrounds: (p.campgrounds ?? []).map((c) => ({
+      id: c.campgroundId,
+      name: c.campgroundName,
+      rate: c.nightlyRate,
+      maxGuests: c.maxGuests,
+      seasonOpens: c.seasonOpens,
+      seasonCloses: c.seasonCloses,
+    })),
   }
-}
-
-export function siteOptionsFor(park) {
-  return [
-    {
-      id: 'tent',
-      label: 'Tent site',
-      detail: 'Fire ring, picnic table, vault toilets',
-      rate: park.baseRate,
-      capacity: 6,
-    },
-    {
-      id: 'rv',
-      label: 'RV hookup',
-      detail: 'Water and 50-amp electric, paved pad',
-      rate: park.baseRate + 22,
-      capacity: 8,
-    },
-    {
-      id: 'cabin',
-      label: 'Rustic cabin',
-      detail: 'Bunks, heater, shared bathhouse',
-      rate: park.baseRate * 3 + 15,
-      capacity: 4,
-    },
-    {
-      id: 'backcountry',
-      label: 'Backcountry permit',
-      detail: 'Wilderness camping, pack in / pack out',
-      rate: 10,
-      capacity: 4,
-    },
-  ]
 }

@@ -15,7 +15,8 @@ export default function TripsDrawer({ trips, onCancel, onClose }) {
                 <div>
                   <strong>{t.parkName}</strong>
                   <span>
-                    {t.site} · {formatDate(t.checkIn)} – {formatDate(t.checkOut)} · {t.guests}{' '}
+                    {t.campground}
+                    {t.siteNumber && <> · Site {t.siteNumber}</>} · {formatDate(t.checkIn)} – {formatDate(t.checkOut)} · {t.guests}{' '}
                     guest{t.guests === 1 ? '' : 's'}
                   </span>
                   <code>{t.code}</code>

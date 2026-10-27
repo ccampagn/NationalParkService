@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.EntityFrameworkCore;
 using NationalParkServiceAPI.Data;
 
@@ -10,6 +11,10 @@ builder.Services.AddControllers();
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy => policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+// Log in returns a bearer token; the React app sends it back in the Authorization header.
+builder.Services.AddAuthentication(BearerTokenDefaults.AuthenticationScheme)
+    .AddBearerToken(options => options.BearerTokenExpiration = TimeSpan.FromDays(7));
+builder.Services.AddAuthorization();
 builder.Services.AddDbContext<NationalParkServiceDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("NationalParkService")));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -27,6 +32,7 @@ app.UseHttpsRedirection();
 
 app.UseCors();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

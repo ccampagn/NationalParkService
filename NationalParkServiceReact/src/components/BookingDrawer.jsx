@@ -1,45 +1,104 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Drawer from './Drawer.jsx'
 import ParkPhoto from './ParkPhoto.jsx'
-import { RESERVATION_FEE, siteOptionsFor } from '../data/parks.js'
-import { formatDate, nightsBetween } from '../dates.js'
+import { RESERVATION_FEE } from '../data/parks.js'
+import { UnauthorizedError, createReservation, getSites } from '../api.js'
+import { firstClosedNight, formatDate, formatSeason, isoDaysFromNow, nightsBetween } from '../dates.js'
 
-function confirmationCode() {
-  return 'NPS-' + Math.random().toString(36).slice(2, 8).toUpperCase()
-}
-
-export default function BookingDrawer({ park, initial, onClose, onConfirm }) {
-  const sites = siteOptionsFor(park)
-  const [siteId, setSiteId] = useState(sites[0].id)
+export default function BookingDrawer({ park, initial, onClose, onConfirm, onSessionEnded }) {
+  const campgrounds = park.campgrounds
+  // Start on a campground that's open for the suggested dates, if there is one.
+  const [campgroundId, setCampgroundId] = useState(
+    () => (campgrounds.find((c) => !firstClosedNight(c, initial.checkIn, initial.checkOut)) ?? campgrounds[0])?.id,
+  )
   const [checkIn, setCheckIn] = useState(initial.checkIn)
   const [checkOut, setCheckOut] = useState(initial.checkOut)
   const [guests, setGuests] = useState(2)
+  const [siteId, setSiteId] = useState(null)
+  // Bumped to re-fetch availability, e.g. after someone else books the chosen site first.
+  const [sitesVersion, setSitesVersion] = useState(0)
+  // Sites for the campground and dates in `key`; when `key` doesn't match the current one, a fetch is in flight.
+  const [sitesResult, setSitesResult] = useState({ key: null, sites: [], error: '' })
   const [confirmed, setConfirmed] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
-  const site = sites.find((s) => s.id === siteId)
   const nights = nightsBetween(checkIn, checkOut)
-  const subtotal = nights * site.rate
-  const total = subtotal + RESERVATION_FEE
+  let dateError = ''
+  if (checkIn < isoDaysFromNow(0)) dateError = "Check-in can't be in the past."
+  else if (nights < 1) dateError = 'Check-out must be after check-in.'
+  else if (nights > 14) dateError = 'Stays are limited to 14 nights.'
 
-  let error = ''
-  if (nights < 1) error = 'Check-out must be after check-in.'
-  else if (nights > 14) error = 'Stays are limited to 14 nights.'
-  else if (guests > site.capacity) error = `${site.label} fits up to ${site.capacity} guests.`
+  const campground = campgrounds.find((c) => c.id === campgroundId)
+  const closedNight = campground && !dateError ? firstClosedNight(campground, checkIn, checkOut) : null
+  if (closedNight) {
+    dateError = `${campground.name} is closed for the season on ${formatDate(closedNight)}. ${formatSeason(campground)}.`
+  }
 
-  function handleConfirm() {
-    const trip = {
-      code: confirmationCode(),
-      parkId: park.id,
-      parkName: park.name,
-      site: site.label,
-      checkIn,
-      checkOut,
-      nights,
-      guests,
-      total,
+  const sitesKey = campgroundId && !dateError ? `${campgroundId}|${checkIn}|${checkOut}|${sitesVersion}` : null
+
+  useEffect(() => {
+    if (!sitesKey) return
+    let stale = false
+    getSites(campgroundId, checkIn, checkOut)
+      .then((sites) => !stale && setSitesResult({ key: sitesKey, sites, error: '' }))
+      .catch((err) => !stale && setSitesResult({ key: sitesKey, sites: [], error: err.message }))
+    return () => {
+      stale = true
     }
-    onConfirm(trip)
-    setConfirmed(trip)
+  }, [sitesKey, campgroundId, checkIn, checkOut])
+
+  if (campgrounds.length === 0) {
+    return (
+      <Drawer title={`Reserve at ${park.name}`} onClose={onClose}>
+        <div className="drawer-art">
+          <ParkPhoto park={park} />
+          <div className="drawer-art-text">
+            <span>{park.state}</span>
+            <h2>{park.name}</h2>
+          </div>
+        </div>
+        <div className="drawer-body">
+          <p>{park.name} has no campgrounds to reserve.</p>
+          <button type="button" className="btn btn-primary wide" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </Drawer>
+    )
+  }
+
+  const sitesLoading = Boolean(sitesKey) && sitesResult.key !== sitesKey
+  const sites = sitesKey && !sitesLoading ? sitesResult.sites : []
+  const fits = (s) => s.available && s.maxGuests >= guests
+  // A choice that's been booked or outgrown since it was picked no longer counts.
+  const site = sites.find((s) => s.siteId === siteId && fits(s))
+  const rate = site?.nightlyRate ?? campground.rate
+  const subtotal = nights * rate
+  const total = subtotal + RESERVATION_FEE
+  const maxGuests = Math.max(12, ...sites.map((s) => s.maxGuests))
+
+  function chooseCampground(id) {
+    setCampgroundId(id)
+    setSiteId(null)
+  }
+
+  async function handleConfirm() {
+    setSaving(true)
+    setSaveError('')
+    try {
+      // The API checks the request again, works out the price and assigns the confirmation code.
+      const trip = await createReservation({ siteId: site.siteId, checkIn, checkOut, guests })
+      onConfirm(trip)
+      setConfirmed(trip)
+    } catch (err) {
+      if (err instanceof UnauthorizedError) return onSessionEnded()
+      setSaveError(`Couldn't save your reservation: ${err.message}`)
+      // Someone may have just taken this site; show fresh availability.
+      setSitesVersion((v) => v + 1)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -61,8 +120,14 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm }) {
           </p>
           <dl className="summary">
             <div>
+              <dt>Campground</dt>
+              <dd>{confirmed.campground}</dd>
+            </div>
+            <div>
               <dt>Site</dt>
-              <dd>{confirmed.site}</dd>
+              <dd>
+                {confirmed.siteNumber} · {confirmed.siteType}
+              </dd>
             </div>
             <div>
               <dt>Dates</dt>
@@ -85,21 +150,22 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm }) {
         </div>
       ) : (
         <div className="drawer-body">
-          <h3 className="step">1 · Choose a site</h3>
-          <div className="site-options" role="radiogroup" aria-label="Site type">
-            {sites.map((s) => (
-              <label key={s.id} className={`site ${s.id === siteId ? 'selected' : ''}`}>
+          <h3 className="step">1 · Choose a campground</h3>
+          <div className="site-options" role="radiogroup" aria-label="Campground">
+            {campgrounds.map((c) => (
+              <label key={c.id} className={`site ${c.id === campgroundId ? 'selected' : ''}`}>
                 <input
                   type="radio"
-                  name="site"
-                  value={s.id}
-                  checked={s.id === siteId}
-                  onChange={() => setSiteId(s.id)}
+                  name="campground"
+                  value={c.id}
+                  checked={c.id === campgroundId}
+                  onChange={() => chooseCampground(c.id)}
                 />
-                <span className="site-name">{s.label}</span>
-                <span className="site-rate">${s.rate}</span>
+                <span className="site-name">{c.name}</span>
+                <span className="site-rate">from ${c.rate}</span>
                 <span className="site-detail">
-                  {s.detail} · up to {s.capacity}
+                  Tent, RV and group sites · {formatSeason(c)}
+                  {nights >= 1 && nights <= 14 && firstClosedNight(c, checkIn, checkOut) ? ' · Closed for your dates' : ''}
                 </span>
               </label>
             ))}
@@ -130,17 +196,53 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm }) {
               <button
                 type="button"
                 aria-label="More guests"
-                onClick={() => setGuests((g) => Math.min(12, g + 1))}
+                onClick={() => setGuests((g) => Math.min(maxGuests, g + 1))}
               >
                 +
               </button>
             </div>
           </div>
 
+          <h3 className="step">3 · Choose a site</h3>
+          {dateError ? (
+            <p className="site-note">Pick valid dates to see which sites are free.</p>
+          ) : sitesLoading ? (
+            <p className="site-note">Checking availability…</p>
+          ) : sitesResult.error ? (
+            <p className="error">Couldn't load sites: {sitesResult.error}</p>
+          ) : sites.length === 0 ? (
+            <p className="site-note">{campground.name} has no bookable sites yet.</p>
+          ) : (
+            <div className="site-grid" role="radiogroup" aria-label="Site">
+              {sites.map((s) => (
+                <label
+                  key={s.siteId}
+                  className={`site-tile ${s.siteId === site?.siteId ? 'selected' : ''}`}
+                  aria-disabled={!fits(s)}
+                >
+                  <input
+                    type="radio"
+                    name="site"
+                    value={s.siteId}
+                    checked={s.siteId === site?.siteId}
+                    disabled={!fits(s)}
+                    onChange={() => setSiteId(s.siteId)}
+                  />
+                  <strong>{s.siteNumber}</strong>
+                  <span>{s.siteType}</span>
+                  <span>
+                    {!s.available ? 'Booked' : !fits(s) ? `Fits ${s.maxGuests}` : `$${s.nightlyRate} · ${s.maxGuests} max`}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+
           <dl className="summary">
             <div>
               <dt>
-                ${site.rate} × {Math.max(nights, 0)} night{nights === 1 ? '' : 's'}
+                {site ? `Site ${site.siteNumber} · ` : ''}${rate} × {Math.max(nights, 0)} night
+                {nights === 1 ? '' : 's'}
               </dt>
               <dd>${Math.max(subtotal, 0)}</dd>
             </div>
@@ -150,19 +252,19 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm }) {
             </div>
             <div className="total">
               <dt>Total</dt>
-              <dd>${error ? '—' : total}</dd>
+              <dd>${dateError || !site ? '—' : total}</dd>
             </div>
           </dl>
 
-          {error && <p className="error">{error}</p>}
+          {(dateError || saveError) && <p className="error">{dateError || saveError}</p>}
 
           <button
             type="button"
             className="btn btn-primary wide"
-            disabled={Boolean(error)}
+            disabled={Boolean(dateError) || !site || saving}
             onClick={handleConfirm}
           >
-            Confirm reservation
+            {saving ? 'Saving…' : site ? `Reserve site ${site.siteNumber}` : 'Choose a site'}
           </button>
           <p className="fine">Free cancellation up to 48 hours before arrival.</p>
         </div>

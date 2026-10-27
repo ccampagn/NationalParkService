@@ -37,17 +37,25 @@ export default function ParkCard({ park, isFavorite, onToggleFavorite, onReserve
         </ul>
 
         <div className="park-foot">
-          <div className="price">
-            <span className="from">from</span>
-            <strong>${park.baseRate}</strong>
-            <span className="per">/ night</span>
-            <span className={`left ${lowAvailability ? 'low' : ''}`}>
-              {park.sitesLeft} sites left
-            </span>
-          </div>
-          <button type="button" className="btn btn-primary" onClick={() => onReserve(park)}>
-            Reserve
-          </button>
+          {park.campgrounds.length > 0 ? (
+            <>
+              <div className="price">
+                <span className="from">from</span>
+                <strong>${park.baseRate}</strong>
+                <span className="per">/ night</span>
+                <span className={`left ${lowAvailability ? 'low' : ''}`}>
+                  {park.sitesLeft} site{park.sitesLeft === 1 ? '' : 's'} left
+                </span>
+              </div>
+              <button type="button" className="btn btn-primary" onClick={() => onReserve(park)}>
+                Reserve
+              </button>
+            </>
+          ) : (
+            <div className="price">
+              <span className="from">No campgrounds to reserve</span>
+            </div>
+          )}
         </div>
       </div>
     </article>
