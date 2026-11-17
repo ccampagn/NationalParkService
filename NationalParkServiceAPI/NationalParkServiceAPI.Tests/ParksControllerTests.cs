@@ -170,4 +170,16 @@ public class ParksControllerTests
 
         Assert.IsType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>(result.Result);
     }
+
+    [Fact]
+    public async Task GetAvailableParks_DoesNotCountRetiredSites()
+    {
+        using var context = CreateAvailabilityContext();
+        context.Sites.Add(new Site { SiteId = 103, CampgroundId = 10, SiteNumber = "03", Retired = true });
+        context.SaveChanges();
+
+        var result = await new ParksController(context).GetAvailableParks(Nov4.AddDays(4), Nov4.AddDays(6));
+
+        Assert.Equal(new[] { new ParkAvailability(1, 2), new ParkAvailability(3, 1) }, result.Value);
+    }
 }

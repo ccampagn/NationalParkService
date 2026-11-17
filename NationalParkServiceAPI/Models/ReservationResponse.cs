@@ -7,6 +7,7 @@ public record ReservationResponse(
     string ParkName,
     int CampgroundId,
     string Campground,
+    int? SiteId,
     string? SiteNumber,
     string? SiteType,
     DateOnly CheckIn,
@@ -15,4 +16,7 @@ public record ReservationResponse(
     int Guests,
     int NightlyRate,
     int ReservationFee,
-    int Total);
+    int ChangeFees,
+    int Total,
+    // When the reservation was made, in UTC.
+    DateTime BookedAt);

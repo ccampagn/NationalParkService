@@ -9,6 +9,8 @@ public class Campground
     public string CampgroundName { get; set; } = string.Empty;
     public int NightlyRate { get; set; }
     public int MaxGuests { get; set; }
+    // Recreation.gov's FacilityID, where the real sites come from. Null until ImportRecreationGovSites.sql has run.
+    public int? RecreationGovId { get; set; }
     // First and last nights of the season as "MM-dd", e.g. "05-22" and "09-20". A season can run across New Year
     // ("10-15" to "04-15"). Null means open year-round.
     public string? SeasonOpens { get; set; }

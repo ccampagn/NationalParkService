@@ -774,8 +774,21 @@
   font-size: 1.8rem;
   margin: 24px 0 20px;
 }
+.trips-section {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 24px 0 10px;
+}
+.trips-title + .trips-section {
+  margin-top: 0;
+}
 .empty {
   color: var(--muted);
+}
+.trip-list.past .trip {
+  opacity: 0.7;
 }
 .trip-list {
   list-style: none;
@@ -785,25 +798,27 @@
   gap: 12px;
 }
 .trip {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
   padding: 16px;
   background: var(--paper);
   border-radius: 14px;
   box-shadow: var(--shadow);
 }
-.trip strong {
+.trip-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.trip-main strong {
   display: block;
   font-family: var(--serif);
   font-size: 1.15rem;
 }
-.trip span {
+.trip-main span {
   display: block;
   font-size: 0.88rem;
   color: var(--muted);
 }
-.trip code {
+.trip-main code {
   display: inline-block;
   margin-top: 6px;
   font-size: 0.8rem;
@@ -814,6 +829,27 @@
 }
 .trip-side {
   text-align: right;
+}
+.trip-side .link {
+  display: block;
+  margin-left: auto;
+}
+.link.neutral {
+  color: var(--forest-2);
+}
+.trip-edit {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e6e2d8;
+}
+.trip-edit .error {
+  margin: 10px 0 0;
+}
+.trip-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
 }
 .trip-side span {
   font-weight: 700;
@@ -953,4 +989,89 @@
 .site-note {
   color: var(--muted);
   margin: 0 0 24px;
+}
+.trip-edit .site-grid {
+  margin-top: 12px;
+}
+.trip-edit .site-note {
+  margin: 12px 0 0;
+}
+.trip-info {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.trip-info em {
+  display: block;
+  margin-top: 6px;
+  font-style: normal;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--forest-2);
+}
+.trip-info:hover em {
+  text-decoration: underline;
+}
+.receipt .back {
+  margin-top: 0;
+}
+.receipt .trips-title {
+  margin-bottom: 4px;
+}
+.receipt-code {
+  margin: 0 0 16px;
+}
+.receipt-code span {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:disabled {
+  opacity: 0.6;
+}
+.trips-notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #eef2ea;
+  color: var(--forest-2);
+  font-weight: 500;
+}
+.trip-cancel-title {
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+.trip-edit .summary {
+  margin-bottom: 0;
+  background: var(--cream);
+}
+.site-loop {
+  margin: 14px 0 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.site-picker > div:first-child .site-loop {
+  margin-top: 0;
+}
+.site-picker {
+  margin-bottom: 24px;
+}
+.site-picker .site-grid {
+  margin-bottom: 0;
+}
+.site-tile strong {
+  overflow-wrap: anywhere;
 }

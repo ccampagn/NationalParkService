@@ -14,6 +14,8 @@ public class Reservation
     public int Guests { get; set; }
     public int NightlyRate { get; set; }
     public int ReservationFee { get; set; }
+    // $10 for each change to entirely new dates. Included in Total.
+    public int ChangeFees { get; set; }
     public int Total { get; set; }
     public DateTime CreatedAt { get; set; }
 }

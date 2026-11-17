@@ -2,13 +2,13 @@
 
 Trailhead lets people browse all 63 U.S. national parks, see which parks have campsites free for their dates, and reserve
 an individual site. It has two parts:
-
+a
 | Folder | What it is |
 | --- | --- |
 | `NationalParkServiceAPI` | ASP.NET Core Web API (.NET 10, EF Core, SQL Server) |
 | `NationalParkServiceAPI/NationalParkServiceAPI.Tests` | xUnit tests, run against EF Core's in-memory database |
 | `NationalParkServiceAPI/Sql` | Scripts that create and seed the database |
-| `NationalParkServiceReact` | React 19 + Vite front end |
+| `NationalParkServiceReact` | React 19 + Vite front end |ca
 
 ## Features
 
@@ -40,11 +40,14 @@ order. Each one is safe to run again.
 6. `CreateReservationTable.sql`
 7. `AddReservationUserId.sql`
 8. `AddReservationSiteId.sql`
+9. `AddReservationChangeFees.sql`
+10. `AddRecreationGovSites.sql`
+11. `ImportRecreationGovSites.sql` — replaces the placeholder sites with the real campsites from Recreation.gov
 
 From `NationalParkServiceAPI/Sql` in PowerShell:
 
 ```powershell
-'CreateParkTable','CreateCampgroundTable','AddCampgroundSeason','CreateSiteTable','CreateUserTable','CreateReservationTable','AddReservationUserId','AddReservationSiteId' |
+'CreateParkTable','CreateCampgroundTable','AddCampgroundSeason','CreateSiteTable','CreateUserTable','CreateReservationTable','AddReservationUserId','AddReservationSiteId','AddReservationChangeFees','AddRecreationGovSites','ImportRecreationGovSites' |
   ForEach-Object { sqlcmd -S .\SQLEXPRESS -d NationalParkService -E -C -f 65001 -b -i "$_.sql"; if ($LASTEXITCODE) { throw "$_.sql failed" } }
 ```
 

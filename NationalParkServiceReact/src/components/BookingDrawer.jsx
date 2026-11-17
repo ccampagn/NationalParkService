@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Drawer from './Drawer.jsx'
 import ParkPhoto from './ParkPhoto.jsx'
+import SitePicker from './SitePicker.jsx'
 import { RESERVATION_FEE } from '../data/parks.js'
 import { UnauthorizedError, createReservation, getSites } from '../api.js'
 import { firstClosedNight, formatDate, formatSeason, isoDaysFromNow, nightsBetween } from '../dates.js'
@@ -213,29 +214,17 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm, onSes
           ) : sites.length === 0 ? (
             <p className="site-note">{campground.name} has no bookable sites yet.</p>
           ) : (
-            <div className="site-grid" role="radiogroup" aria-label="Site">
-              {sites.map((s) => (
-                <label
-                  key={s.siteId}
-                  className={`site-tile ${s.siteId === site?.siteId ? 'selected' : ''}`}
-                  aria-disabled={!fits(s)}
-                >
-                  <input
-                    type="radio"
-                    name="site"
-                    value={s.siteId}
-                    checked={s.siteId === site?.siteId}
-                    disabled={!fits(s)}
-                    onChange={() => setSiteId(s.siteId)}
-                  />
-                  <strong>{s.siteNumber}</strong>
-                  <span>{s.siteType}</span>
-                  <span>
-                    {!s.available ? 'Booked' : !fits(s) ? `Fits ${s.maxGuests}` : `$${s.nightlyRate} · ${s.maxGuests} max`}
-                  </span>
-                </label>
-              ))}
-            </div>
+            <SitePicker
+              sites={sites}
+              selectedId={site?.siteId}
+              fits={fits}
+              onSelect={setSiteId}
+              name="site"
+              describe={(s) => [
+                s.siteType,
+                !s.available ? 'Booked' : !fits(s) ? `Fits ${s.maxGuests}` : `$${s.nightlyRate} · ${s.maxGuests} max`,
+              ]}
+            />
           )}
 
           <dl className="summary">
@@ -266,7 +255,10 @@ export default function BookingDrawer({ park, initial, onClose, onConfirm, onSes
           >
             {saving ? 'Saving…' : site ? `Reserve site ${site.siteNumber}` : 'Choose a site'}
           </button>
-          <p className="fine">Free cancellation up to 48 hours before arrival.</p>
+          <p className="fine">
+            Cancel up to your arrival day for a refund, minus the non-refundable reservation fee and a $10 cancellation
+            fee. Cancelling the day before or the day of arrival also forfeits the first night.
+          </p>
         </div>
       )}
     </Drawer>

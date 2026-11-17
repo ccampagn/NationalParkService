@@ -9,6 +9,7 @@ import { ACTIVITIES, REGIONS } from './data/parks.js'
 import {
   UnauthorizedError,
   cancelReservation,
+  changeReservation,
   getAvailableParks,
   getMe,
   getParks,
@@ -152,15 +153,31 @@ function App() {
     else setAuthDrawer({ mode: 'login', message: 'Log in to see your trips.' })
   }
 
+  // Returns { code, refund }, or null if the session has ended. Other errors are thrown for the trips drawer to show.
   async function handleCancelTrip(code) {
     try {
-      await cancelReservation(code)
+      const cancellation = await cancelReservation(code)
       setTrips((t) => t.filter((x) => x.code !== code))
+      setAvailabilityVersion((v) => v + 1)
+      return cancellation
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        handleSessionEnded()
+        return null
+      }
+      throw err
+    }
+  }
+
+  // Throws for the trips drawer to show, unless the session has ended.
+  async function handleChangeTrip(code, changes) {
+    try {
+      const updated = await changeReservation(code, changes)
+      setTrips((t) => t.map((x) => (x.code === code ? updated : x)))
       setAvailabilityVersion((v) => v + 1)
     } catch (err) {
       if (err instanceof UnauthorizedError) return handleSessionEnded()
-      console.error('Failed to cancel reservation', err)
-      alert(`Couldn't cancel ${code}: ${err.message}`)
+      throw err
     }
   }
 
@@ -467,6 +484,7 @@ function App() {
         <TripsDrawer
           trips={trips}
           onCancel={handleCancelTrip}
+          onChange={handleChangeTrip}
           onClose={closeTrips}
         />
       )}

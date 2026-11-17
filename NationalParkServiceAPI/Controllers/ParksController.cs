@@ -51,6 +51,7 @@ public class ParksController : ControllerBase
 
         return await (from s in _context.Sites
                       where openCampgroundIds.Contains(s.CampgroundId)
+                            && !s.Retired
                             && !overlapping.Any(r => r.SiteId == s.SiteId)
                       join c in _context.Campgrounds on s.CampgroundId equals c.CampgroundId
                       group s by c.ParkId into park

@@ -59,9 +59,11 @@ export function getReservations() {
   return request('/reservations')
 }
 
-// Each site in the campground, with `available` false if it's booked for any of those nights.
-export function getSites(campgroundId, checkIn, checkOut) {
+// Each site in the campground, with `available` false if it's booked for any of those nights. Pass `except` (one of the
+// user's own confirmation codes) to not count that reservation, e.g. while changing it.
+export function getSites(campgroundId, checkIn, checkOut, except) {
   const query = new URLSearchParams({ checkIn, checkOut })
+  if (except) query.set('except', except)
   return request(`/campgrounds/${campgroundId}/sites?${query}`)
 }
 
@@ -70,6 +72,15 @@ export function createReservation({ siteId, checkIn, checkOut, guests }) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ siteId, checkIn, checkOut, guests }),
+  })
+}
+
+// Moves a reservation to another site in the same campground and/or new dates; returns the updated trip.
+export function changeReservation(code, { siteId, checkIn, checkOut }) {
+  return request(`/reservations/${encodeURIComponent(code)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ siteId, checkIn, checkOut }),
   })
 }
 

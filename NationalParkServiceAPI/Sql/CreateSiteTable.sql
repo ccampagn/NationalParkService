@@ -1,4 +1,8 @@
 -- Run CreateCampgroundTable.sql first. Safe to re-run.
+-- Inserts into dbo.Site need this once AddRecreationGovSites.sql adds its filtered indexes; sqlcmd turns it off by default.
+SET QUOTED_IDENTIFIER ON;
+GO
+
 IF OBJECT_ID('dbo.Site', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Site

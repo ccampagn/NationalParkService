@@ -5,6 +5,7 @@ public record SiteAvailability(
     int SiteId,
     string SiteNumber,
     string SiteType,
+    string? Loop,
     int MaxGuests,
     int NightlyRate,
     bool Available);

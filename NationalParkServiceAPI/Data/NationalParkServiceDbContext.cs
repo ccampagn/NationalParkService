@@ -31,7 +31,9 @@ public class NationalParkServiceDbContext : DbContext
         modelBuilder.Entity<Reservation>().ToTable("Reservation");
         modelBuilder.Entity<User>().ToTable("User");
         modelBuilder.Entity<Site>().ToTable("Site");
-        modelBuilder.Entity<Site>().HasIndex(s => new { s.CampgroundId, s.SiteNumber }).IsUnique();
+        // Retired placeholder sites can share a number with the real site that replaced them.
+        modelBuilder.Entity<Site>().HasIndex(s => new { s.CampgroundId, s.SiteNumber }).IsUnique().HasFilter("[Retired] = 0");
+        modelBuilder.Entity<Site>().HasIndex(s => s.RecreationGovId).IsUnique().HasFilter("[RecreationGovId] IS NOT NULL");
 
         modelBuilder.Entity<Site>()
             .HasOne<Campground>()
